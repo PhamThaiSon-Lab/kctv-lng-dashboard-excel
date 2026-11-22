@@ -372,6 +372,20 @@ a.btn { text-decoration: none; }
 .loader { width: 34px; height: 34px; border-radius: 50%; border: 4px solid var(--sky); border-top-color: var(--blue); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 900px) { .warn-strip { margin-inline: 16px; } }
+/* Menu "Cách khác" trên thanh công cụ */
+.tb-more { position: relative; }
+.tb-more > summary { list-style: none; cursor: pointer; user-select: none; }
+.tb-more > summary::-webkit-details-marker { display: none; }
+.tb-more[open] > summary { border-color: var(--blue); background: var(--sky); }
+.tb-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; width: 340px; max-width: calc(100vw - 32px); background: #fff;
+  border: 1px solid var(--line); border-radius: var(--r12); box-shadow: 0 12px 32px rgba(20,35,61,.18); padding: 6px; display: grid; gap: 2px; }
+.tb-menu button { display: grid; gap: 2px; text-align: left; border: 0; background: none; border-radius: var(--r8); padding: 9px 12px; cursor: pointer; }
+.tb-menu button:hover, .tb-menu button:focus-visible { background: var(--sky); }
+.tb-menu b { font: 600 14px var(--f-head); color: var(--blue); }
+.tb-menu small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.empty-alt { margin: 0; font-size: 13px; color: var(--muted); }
+.empty-alt .btn-link { background: none; border: 0; padding: 0 2px; font: inherit; color: var(--blue); text-decoration: underline; cursor: pointer; }
+@media (max-width: 640px) { .tb-menu { position: fixed; left: 16px; right: 16px; width: auto; top: auto; margin-top: 6px; } }
 </style>
 </head>
 <body>
@@ -393,9 +407,14 @@ a.btn { text-decoration: none; }
 
 <nav class="toolbar" aria-label="Thao tác">
   <div class="tb-group">
-    <button id="btn-connect-dir" class="btn btn-ghost" title="Chọn thư mục dùng chung chứa file Excel FINAL (khuyến nghị: có sao lưu và nhật ký chung)">Kết nối thư mục</button>
-    <button id="btn-connect-file" class="btn btn-ghost" title="Chọn trực tiếp file Excel FINAL">Kết nối file</button>
-    <button id="btn-upload" class="btn btn-ghost" title="Kéo thả hoặc chọn file Excel để xem (Cách 2)">Tải Excel lên</button>
+    <button id="btn-connect-dir" class="btn btn-ghost" title="Chọn thư mục dùng chung chứa file Excel FINAL: đọc/ghi, sao lưu, nhật ký chung">Kết nối thư mục</button>
+    <details class="tb-more" id="tb-more">
+      <summary class="btn btn-ghost" title="Các cách nạp file khác">Cách khác ▾</summary>
+      <div class="tb-menu" role="menu">
+        <button id="btn-connect-file" type="button" role="menuitem"><b>Kết nối file</b><small>Chỉ 1 file: đọc/ghi được, nhưng không sao lưu vào thư mục, không nhật ký chung</small></button>
+        <button id="btn-upload" type="button" role="menuitem"><b>Tải Excel lên (chỉ xem)</b><small>Nạp 1 bản chép, có xem trước thay đổi; khi lưu sẽ tải file về để lưu đè. Có thể kéo thả file vào trang</small></button>
+      </div>
+    </details>
   </div>
   <div class="tb-group">
     <button id="btn-stock" class="btn btn-green">Cập nhật kho</button>
@@ -487,7 +506,7 @@ a.btn { text-decoration: none; }
 <section id="empty" class="empty"></section>
 
 <footer class="foot-bar">
-  <span>PV GAS · KCTV · Dashboard tồn kho bồn LNG – bản Excel v1.1.0 (build 15:09:13 21/11/2026)</span>
+  <span>PV GAS · KCTV · Dashboard tồn kho bồn LNG – bản Excel v1.1.0 (build 13:16:36 22/11/2026)</span>
   <span>Chỉ đọc/ghi file Excel trong thư mục được chọn trên máy này – không gửi dữ liệu lên mạng.</span>
 </footer>
 <div class="drop-overlay" aria-hidden="true"><div>Thả file Excel FINAL để xem trước và nạp</div></div>
@@ -2211,8 +2230,12 @@ function reportError(err) {
 
 function bindChrome() {
   $('#btn-connect-dir').addEventListener('click', connectDir);
-  $('#btn-connect-file').addEventListener('click', connectFile);
-  $('#btn-upload').addEventListener('click', () => $('#file-upload').click());
+  const more = $('#tb-more');
+  const closeMore = () => { if (more) more.open = false; };
+  $('#btn-connect-file').addEventListener('click', () => { closeMore(); connectFile(); });
+  $('#btn-upload').addEventListener('click', () => { closeMore(); $('#file-upload').click(); });
+  document.addEventListener('click', (e) => { if (more?.open && !more.contains(e.target)) closeMore(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMore(); });
   $('#file-upload').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) uploadFile(f); });
   $('#btn-stock').addEventListener('click', () => openStockDialog());
   $('#btn-plan').addEventListener('click', () => openPlanDialog());
@@ -2496,10 +2519,11 @@ function renderEmpty() {
         <div class="empty-actions">
           ${S.pendingSrc ? `<button class="btn btn-primary" data-act="reconnect">Kết nối lại ${esc(S.pendingSrc.name)}</button>` : ''}
           <button class="btn ${S.pendingSrc ? 'btn-ghost' : 'btn-primary'}" data-act="connect-dir">Kết nối thư mục</button>
-          <button class="btn btn-ghost" data-act="connect-file">Chọn file Excel</button>
-          <button class="btn btn-ghost" data-act="upload">Tải Excel lên (chỉ xem)</button>
-          <button class="btn btn-link" data-act="demo">Xem dữ liệu mẫu</button>
         </div>
+        <p class="empty-alt">Cách khác:
+          <button class="btn-link" data-act="connect-file">Kết nối 1 file</button> ·
+          <button class="btn-link" data-act="upload">Tải Excel lên (chỉ xem)</button> ·
+          <button class="btn-link" data-act="demo">Xem dữ liệu mẫu</button></p>
         ${store.FS_SUPPORTED ? '' : '<p class="txt-warn">Trình duyệt này chưa hỗ trợ kết nối file – hãy dùng Edge hoặc Chrome bản mới.</p>'}
       </div>
       <div class="empty-photo" role="img" aria-label="Tàu LNG cập cầu cảng"></div>
